@@ -18,6 +18,8 @@ const CLIENT_SECRET = "jL0vn8ZDwh8F3BQjjCGMUzRkKf1Czg9CPnmS8TWz";
 const REDIRECT_URI = "http://localhost:3000/callback";
 const REALM_ID = "9341455722544321";
 
+const CUSTOMER_ID = "1";
+
 // QuickBooks item IDs
 const SALES_ITEM_ID = "1";
 const SHIPPING_ITEM_ID = "2";
