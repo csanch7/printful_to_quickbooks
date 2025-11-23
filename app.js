@@ -24,8 +24,8 @@ const SHIPPING_ITEM_ID = "2";
 const TAX_ITEM_ID = "3";
 
 // Printful API key & webhook URL
-const PRINTFUL_API_KEY = "YOUR_PRINTFUL_API_KEY";
-const WEBHOOK_URL = "https://your-public-domain.com/printful-webhook"; // ngrok or live URL
+const PRINTFUL_API_KEY = "vIL3OCEAX5gDuThUMxjrpvZ25mc0dyl4Q92K8MCo";
+const WEBHOOK_URL = "https://printful-to-quickbooks.onrender.com/printful-webhook"; // ngrok or live URL
 
 // Token storage
 const TOKEN_FILE = "./tokens.json";
