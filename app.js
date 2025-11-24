@@ -1,5 +1,5 @@
 /***************************************************
- * Simple QuickBooks + Printful Integration
+ * Simple QuickBooks + Printful Integration (Sandbox)
  * ONE FILE — app.js
  ***************************************************/
 import express from "express";
@@ -21,9 +21,9 @@ const REALM_ID = "9341455722544321";
 const CUSTOMER_ID = "58";
 
 // QuickBooks item IDs
-const SALES_ITEM_ID = "1";
-const SHIPPING_ITEM_ID = "2";
-const TAX_ITEM_ID = "3";
+const SALES_ITEM_ID = "25";
+const SHIPPING_ITEM_ID = "24";
+const TAX_ITEM_ID = "26";
 
 // Printful API key & webhook URL
 const PRINTFUL_API_KEY = "vIL3OCEAX5gDuThUMxjrpvZ25mc0dyl4Q92K8MCo";
@@ -31,6 +31,9 @@ const WEBHOOK_URL = "https://printful-to-quickbooks.onrender.com/printful-webhoo
 
 // Token storage
 const TOKEN_FILE = "./tokens.json";
+
+// Base URL for QuickBooks Sandbox
+const QUICKBOOKS_BASE_URL = "https://sandbox-quickbooks.api.intuit.com/v3/company";
 
 // ====================
 // Helper: Save & Load tokens
@@ -147,7 +150,7 @@ async function createInvoiceFromPrintful(order) {
     Line: lineItems
   };
 
-  const url = `https://quickbooks.api.intuit.com/v3/company/${REALM_ID}/invoice?minorversion=65`;
+  const url = `${QUICKBOOKS_BASE_URL}/${REALM_ID}/invoice?minorversion=65`;
   const response = await axios.post(url, payload, {
     headers: {
       Authorization: `Bearer ${token}`,
@@ -192,20 +195,6 @@ async function registerPrintfulWebhook() {
     }
   }
 }
-
-async function listItems() {
-    const token = await getAccessToken();
-  const resp = await axios.get(
-    `https://quickbooks.api.intuit.com/v3/company/${REALM_ID}/query?query=select * from Item`,
-    {
-      headers: { Authorization: `Bearer ${token}`, Accept: "application/json" }
-    }
-  );
-  console.log(resp.data.QueryResponse.Item);
-}
-
-listItems();
-
 
 // ====================
 // Start server
