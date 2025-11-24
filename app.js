@@ -193,6 +193,19 @@ async function registerPrintfulWebhook() {
   }
 }
 
+async function listItems() {
+  const resp = await axios.get(
+    `https://quickbooks.api.intuit.com/v3/company/${REALM_ID}/query?query=select * from Item`,
+    {
+      headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" }
+    }
+  );
+  console.log(resp.data.QueryResponse.Item);
+}
+
+listItems();
+
+
 // ====================
 // Start server
 // ====================
