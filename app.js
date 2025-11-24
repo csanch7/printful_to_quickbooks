@@ -15,7 +15,7 @@ app.use(bodyParser.json());
 // ====================
 const CLIENT_ID = "ABtdythQiSKdJPzvZpvig56Y44qCcdmXP4EMi3x4g82BrM8AZx";
 const CLIENT_SECRET = "jL0vn8ZDwh8F3BQjjCGMUzRkKf1Czg9CPnmS8TWz";
-const REDIRECT_URI = "http://localhost:3000/callback";
+const REDIRECT_URI = "https://printful-to-quickbooks.onrender.com/callback";
 const REALM_ID = "9341455722544321";
 
 const CUSTOMER_ID = "58";
