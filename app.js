@@ -164,10 +164,21 @@ async function createInvoiceFromPrintful(order) {
 // ====================
 // Printful Webhook
 // ====================
+// ====================
+// Printful Webhook
+// ====================
 app.post("/printful-webhook", async (req, res) => {
   try {
     const order = req.body.data;
-    const invoice = await createInvoiceFromPrintful(order);
+
+    // Ensure we have items
+    const items = order.items || order.payload?.items || [];
+    if (!items.length) {
+      console.log("⚠️ No items found in order:", JSON.stringify(order, null, 2));
+      return res.status(200).send("No items to process");
+    }
+
+    const invoice = await createInvoiceFromPrintful({ ...order, items });
     console.log("Invoice created:", invoice);
     res.status(200).send("OK");
   } catch (err) {
@@ -175,6 +186,7 @@ app.post("/printful-webhook", async (req, res) => {
     res.status(500).send("Failed to create invoice");
   }
 });
+
 
 // ====================
 // Register Printful Webhook Automatically
