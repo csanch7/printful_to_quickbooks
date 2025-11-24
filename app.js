@@ -102,47 +102,78 @@ async function getAccessToken() {
 // ====================
 // Create QuickBooks Invoice
 // ====================
+// ====================
+// Create QuickBooks Invoice
+// ====================
 async function createInvoiceFromPrintful(order) {
   const token = await getAccessToken();
   const lineItems = [];
 
+  // Make sure items exist
+  if (!order.items || !order.items.length) {
+    console.log("⚠️ No items to create invoice for:", order);
+    return null;
+  }
+
   order.items.forEach(item => {
+    // Use retail_price if available, fallback to price
+    const amount = parseFloat(item.retail_price ?? item.price ?? 0);
     lineItems.push({
       DetailType: "SalesItemLineDetail",
-      Amount: item.retail_price,
-      Description: item.name,
+      Amount: amount,
+      Description: item.name ?? "Unnamed item",
       SalesItemLineDetail: {
         ItemRef: { value: SALES_ITEM_ID },
-        Qty: item.quantity,
-        UnitPrice: item.retail_price
+        Qty: item.quantity ?? 1,
+        UnitPrice: amount
       }
     });
   });
 
-  if (order.shipping) {
+  // Shipping
+  if (order.shipping_price !== undefined) {
+    const shippingAmount = parseFloat(order.shipping_price ?? 0);
+    if (shippingAmount > 0) {
+      lineItems.push({
+        DetailType: "SalesItemLineDetail",
+        Amount: shippingAmount,
+        Description: "Shipping",
+        SalesItemLineDetail: {
+          ItemRef: { value: SHIPPING_ITEM_ID },
+          Qty: 1,
+          UnitPrice: shippingAmount
+        }
+      });
+    }
+  } else if (order.shipping !== undefined && !isNaN(order.shipping)) {
+    // fallback for older sandbox field
     lineItems.push({
       DetailType: "SalesItemLineDetail",
-      Amount: order.shipping,
+      Amount: parseFloat(order.shipping),
       Description: "Shipping",
       SalesItemLineDetail: {
         ItemRef: { value: SHIPPING_ITEM_ID },
         Qty: 1,
-        UnitPrice: order.shipping
+        UnitPrice: parseFloat(order.shipping)
       }
     });
   }
 
+  // Tax
   if (order.tax !== undefined) {
-    lineItems.push({
-      DetailType: "SalesItemLineDetail",
-      Amount: order.tax,
-      Description: "Sales Tax",
-      SalesItemLineDetail: {
-        ItemRef: { value: TAX_ITEM_ID },
-        Qty: 1,
-        UnitPrice: order.tax
-      }
-    });
+    const taxAmount = parseFloat(order.tax ?? 0);
+    if (taxAmount > 0) {
+      lineItems.push({
+        DetailType: "SalesItemLineDetail",
+        Amount: taxAmount,
+        Description: "Sales Tax",
+        SalesItemLineDetail: {
+          ItemRef: { value: TAX_ITEM_ID },
+          Qty: 1,
+          UnitPrice: taxAmount
+        }
+      });
+    }
   }
 
   const payload = {
@@ -161,6 +192,7 @@ async function createInvoiceFromPrintful(order) {
   return response.data;
 }
 
+
 // ====================
 // Printful Webhook
 // ====================
@@ -169,12 +201,12 @@ async function createInvoiceFromPrintful(order) {
 // ====================
 app.post("/printful-webhook", async (req, res) => {
   try {
-    const order = req.body.data;
+    // Support both sandbox and live payloads
+    const order = req.body.data || req.body.order;
+    const items = order.items || [];
 
-    // Ensure we have items
-    const items = order.items || order.payload?.items || [];
     if (!items.length) {
-      console.log("⚠️ No items found in order:", JSON.stringify(order, null, 2));
+      console.log("⚠️ No items found in order:", JSON.stringify(req.body, null, 2));
       return res.status(200).send("No items to process");
     }
 
@@ -186,6 +218,7 @@ app.post("/printful-webhook", async (req, res) => {
     res.status(500).send("Failed to create invoice");
   }
 });
+
 
 
 // ====================
