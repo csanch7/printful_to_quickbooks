@@ -83,23 +83,40 @@ app.get("/callback", async (req, res) => {
 // Refresh Access Token
 // ====================
 async function getAccessToken() {
-  const tokens = loadTokens();
+  let tokens = loadTokens();
   if (!tokens) throw new Error("No tokens stored — visit /auth first");
 
-  const resp = await axios.post(
-    "https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer",
-    new URLSearchParams({
-      grant_type: "refresh_token",
-      refresh_token: tokens.refresh_token
-    }),
-    {
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      auth: { username: CLIENT_ID, password: CLIENT_SECRET }
+  // If the access token is still valid, return it
+  // (Optional: store expiration time in tokens.json for efficiency)
+
+  try {
+    const resp = await axios.post(
+      "https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer",
+      new URLSearchParams({
+        grant_type: "refresh_token",
+        refresh_token: tokens.refresh_token
+      }),
+      {
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        auth: { username: CLIENT_ID, password: CLIENT_SECRET }
+      }
+    );
+
+    // Save new access + refresh tokens
+    saveTokens(resp.data);
+
+    return resp.data.access_token;
+  } catch (err) {
+    if (err.response?.data?.error === "invalid_grant") {
+      console.error(
+        "⚠️ Refresh token invalid. You must visit /auth to reauthorize QuickBooks."
+      );
+      throw new Error("Manual reauthorization required");
     }
-  );
-  saveTokens(resp.data);
-  return resp.data.access_token;
+    throw err;
+  }
 }
+
 
 // ====================
 // Create QuickBooks Invoice
