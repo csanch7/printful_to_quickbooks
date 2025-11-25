@@ -40,13 +40,45 @@ const QUICKBOOKS_BASE_URL = "https://sandbox-quickbooks.api.intuit.com/v3/compan
 // Helper: Save & Load tokens
 // ====================
 function saveTokens(data) {
-  fs.writeFileSync(TOKEN_FILE, JSON.stringify(data, null, 2));
+  const timestampedData = {
+    ...data,
+    last_refreshed: Date.now() // track when this token was obtained
+  };
+  fs.writeFileSync(TOKEN_FILE, JSON.stringify(timestampedData, null, 2));
 }
+
 
 function loadTokens() {
   if (!fs.existsSync(TOKEN_FILE)) return null;
   return JSON.parse(fs.readFileSync(TOKEN_FILE));
 }
+
+app.get("/token-status", (req, res) => {
+  const tokens = loadTokens();
+  if (!tokens) return res.status(200).send("No tokens stored. Visit /auth to authorize your app.");
+
+  const now = Date.now();
+  const lastRefreshed = tokens.last_refreshed || now;
+  const msSinceRefresh = now - lastRefreshed;
+  const daysSinceRefresh = Math.floor(msSinceRefresh / (1000 * 60 * 60 * 24));
+
+  const daysLeft = 100 - daysSinceRefresh; // refresh token expires in ~100 days
+
+  let warning = "";
+  if (daysLeft <= 10) {
+    warning = "⚠️ Refresh token is expiring soon. Please reauthorize your app!";
+  }
+
+  res.status(200).send({
+    access_token: tokens.access_token,
+    refresh_token: tokens.refresh_token,
+    last_refreshed: new Date(lastRefreshed).toISOString(),
+    days_since_refresh: daysSinceRefresh,
+    days_left_estimate: daysLeft,
+    warning
+  });
+});
+
 
 // ====================
 // QuickBooks OAuth
@@ -80,14 +112,11 @@ app.get("/callback", async (req, res) => {
 });
 
 // ====================
-// Refresh Access Token
+// Automatic Access Token Refresh
 // ====================
 async function getAccessToken() {
-  let tokens = loadTokens();
+  const tokens = loadTokens();
   if (!tokens) throw new Error("No tokens stored — visit /auth first");
-
-  // If the access token is still valid, return it
-  // (Optional: store expiration time in tokens.json for efficiency)
 
   try {
     const resp = await axios.post(
@@ -102,21 +131,19 @@ async function getAccessToken() {
       }
     );
 
-    // Save new access + refresh tokens
+    // Save new access + refresh tokens automatically
     saveTokens(resp.data);
-
     return resp.data.access_token;
   } catch (err) {
     if (err.response?.data?.error === "invalid_grant") {
       console.error(
-        "⚠️ Refresh token invalid. You must visit /auth to reauthorize QuickBooks."
+        "⚠️ Refresh token invalid. Manual reauthorization required — visit /auth in your browser."
       );
       throw new Error("Manual reauthorization required");
     }
     throw err;
   }
 }
-
 
 // ====================
 // Create QuickBooks Invoice
@@ -130,7 +157,6 @@ async function createInvoiceFromPrintful(order) {
     return null;
   }
 
-  // Map each Printful item to a QuickBooks line item
   order.items.forEach(item => {
     const amount = parseFloat(item.retail_price ?? item.price ?? "0") || 0;
     const quantity = parseFloat(item.quantity ?? 1) || 1;
@@ -201,7 +227,7 @@ app.post("/printful-webhook", async (req, res) => {
     const order = req.body.data?.order || req.body.order || req.body.data;
     const items = order.items || order.line_items || [];
 
-    console.log("**************************************************");    
+    console.log("**************************************************");
     console.log("*******************ORDER ITEMS********************");
     console.log(items);
     console.log("**************************************************");
@@ -215,7 +241,7 @@ app.post("/printful-webhook", async (req, res) => {
     console.log("Invoice created:", invoice);
     res.status(200).send("OK");
   } catch (err) {
-    console.error("QBO Validation Error:", JSON.stringify(err.response?.data, null, 2) || err.message);
+    console.error("QBO Error:", err.message);
     res.status(500).send("Failed to create invoice");
   }
 });
