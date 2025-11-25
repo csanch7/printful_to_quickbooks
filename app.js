@@ -1,12 +1,11 @@
 /***************************************************
- * Simple QuickBooks + Printful Integration (Sandbox)
+ * QuickBooks + Printful Integration (Sandbox)
  * ONE FILE — app.js
  ***************************************************/
 import express from "express";
 import axios from "axios";
 import bodyParser from "body-parser";
 import fs from "fs";
-import { log } from "console";
 
 const app = express();
 app.use(bodyParser.json());
@@ -19,6 +18,7 @@ const CLIENT_SECRET = "jL0vn8ZDwh8F3BQjjCGMUzRkKf1Czg9CPnmS8TWz";
 const REDIRECT_URI = "https://printful-to-quickbooks.onrender.com/callback";
 const REALM_ID = "9341455722544321";
 
+// Single customer in QBO
 const CUSTOMER_ID = "58";
 
 // QuickBooks item IDs
@@ -28,7 +28,7 @@ const TAX_ITEM_ID = "26";
 
 // Printful API key & webhook URL
 const PRINTFUL_API_KEY = "vIL3OCEAX5gDuThUMxjrpvZ25mc0dyl4Q92K8MCo";
-const WEBHOOK_URL = "https://printful-to-quickbooks.onrender.com/printful-webhook"; // ngrok or live URL
+const WEBHOOK_URL = "https://printful-to-quickbooks.onrender.com/printful-webhook";
 
 // Token storage
 const TOKEN_FILE = "./tokens.json";
@@ -85,6 +85,7 @@ app.get("/callback", async (req, res) => {
 async function getAccessToken() {
   const tokens = loadTokens();
   if (!tokens) throw new Error("No tokens stored — visit /auth first");
+
   const resp = await axios.post(
     "https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer",
     new URLSearchParams({
@@ -103,78 +104,60 @@ async function getAccessToken() {
 // ====================
 // Create QuickBooks Invoice
 // ====================
-// ====================
-// Create QuickBooks Invoice
-// ====================
 async function createInvoiceFromPrintful(order) {
   const token = await getAccessToken();
   const lineItems = [];
 
-  // Make sure items exist
   if (!order.items || !order.items.length) {
     console.log("⚠️ No items to create invoice for:", order);
     return null;
   }
 
+  // Map each Printful item to a QuickBooks line item
   order.items.forEach(item => {
-    // Use retail_price if available, fallback to price
-    const amount = parseFloat(item.retail_price ?? item.price ?? 0);
+    const amount = parseFloat(item.retail_price ?? item.price ?? "0") || 0;
+    const quantity = parseFloat(item.quantity ?? 1) || 1;
+
     lineItems.push({
       DetailType: "SalesItemLineDetail",
-      Amount: amount,
+      Amount: amount * quantity,
       Description: item.name ?? "Unnamed item",
       SalesItemLineDetail: {
         ItemRef: { value: SALES_ITEM_ID },
-        Qty: item.quantity ?? 1,
+        Qty: quantity,
         UnitPrice: amount
       }
     });
   });
 
   // Shipping
-  if (order.shipping_price !== undefined) {
-    const shippingAmount = parseFloat(order.shipping_price ?? 0);
-    if (shippingAmount > 0) {
-      lineItems.push({
-        DetailType: "SalesItemLineDetail",
-        Amount: shippingAmount,
-        Description: "Shipping",
-        SalesItemLineDetail: {
-          ItemRef: { value: SHIPPING_ITEM_ID },
-          Qty: 1,
-          UnitPrice: shippingAmount
-        }
-      });
-    }
-  } else if (order.shipping !== undefined && !isNaN(order.shipping)) {
-    // fallback for older sandbox field
+  const shippingAmount = parseFloat(order.shipping_price ?? order.shipping ?? 0) || 0;
+  if (shippingAmount > 0) {
     lineItems.push({
       DetailType: "SalesItemLineDetail",
-      Amount: parseFloat(order.shipping),
+      Amount: shippingAmount,
       Description: "Shipping",
       SalesItemLineDetail: {
         ItemRef: { value: SHIPPING_ITEM_ID },
         Qty: 1,
-        UnitPrice: parseFloat(order.shipping)
+        UnitPrice: shippingAmount
       }
     });
   }
 
   // Tax
-  if (order.tax !== undefined) {
-    const taxAmount = parseFloat(order.tax ?? 0);
-    if (taxAmount > 0) {
-      lineItems.push({
-        DetailType: "SalesItemLineDetail",
-        Amount: taxAmount,
-        Description: "Sales Tax",
-        SalesItemLineDetail: {
-          ItemRef: { value: TAX_ITEM_ID },
-          Qty: 1,
-          UnitPrice: taxAmount
-        }
-      });
-    }
+  const taxAmount = parseFloat(order.tax ?? 0) || 0;
+  if (taxAmount > 0) {
+    lineItems.push({
+      DetailType: "SalesItemLineDetail",
+      Amount: taxAmount,
+      Description: "Sales Tax",
+      SalesItemLineDetail: {
+        ItemRef: { value: TAX_ITEM_ID },
+        Qty: 1,
+        UnitPrice: taxAmount
+      }
+    });
   }
 
   const payload = {
@@ -192,7 +175,6 @@ async function createInvoiceFromPrintful(order) {
 
   return response.data;
 }
-
 
 // ====================
 // Printful Webhook
@@ -216,13 +198,10 @@ app.post("/printful-webhook", async (req, res) => {
     console.log("Invoice created:", invoice);
     res.status(200).send("OK");
   } catch (err) {
-    console.error(err.response?.data || err.message);
+    console.error("QBO Validation Error:", JSON.stringify(err.response?.data, null, 2) || err.message);
     res.status(500).send("Failed to create invoice");
   }
 });
-
-
-
 
 // ====================
 // Register Printful Webhook Automatically
@@ -231,8 +210,7 @@ async function registerPrintfulWebhook() {
   try {
     const resp = await axios.post(
       "https://api.printful.com/webhooks",
-      { url: WEBHOOK_URL, types: ['order_created']
- },
+      { url: WEBHOOK_URL, types: ['order_created'] },
       { headers: { Authorization: `Bearer ${PRINTFUL_API_KEY}`, "Content-Type": "application/json" } }
     );
     console.log("✅ Printful webhook registered:", resp.data);
