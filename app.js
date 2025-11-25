@@ -231,7 +231,7 @@ async function registerPrintfulWebhook() {
   try {
     const resp = await axios.post(
       "https://api.printful.com/webhooks",
-      { url: WEBHOOK_URL, types: ['order_created', 'order_updated', 'order_fulfilled']
+      { url: WEBHOOK_URL, types: ['order_created']
  },
       { headers: { Authorization: `Bearer ${PRINTFUL_API_KEY}`, "Content-Type": "application/json" } }
     );
