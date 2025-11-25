@@ -6,6 +6,7 @@ import express from "express";
 import axios from "axios";
 import bodyParser from "body-parser";
 import fs from "fs";
+import { log } from "console";
 
 const app = express();
 app.use(bodyParser.json());
@@ -196,14 +197,15 @@ async function createInvoiceFromPrintful(order) {
 // ====================
 // Printful Webhook
 // ====================
-// ====================
-// Printful Webhook
-// ====================
 app.post("/printful-webhook", async (req, res) => {
   try {
-    // Support both sandbox and live payloads
-    const order = req.body.data || req.body.order;
-    const items = order.items || [];
+    const order = req.body.data?.order || req.body.order || req.body.data;
+    const items = order.items || order.line_items || [];
+
+    console.log("**************************************************");    
+    console.log("*******************ORDER ITEMS********************");
+    console.log(items);
+    console.log("**************************************************");
 
     if (!items.length) {
       console.log("⚠️ No items found in order:", JSON.stringify(req.body, null, 2));
@@ -221,6 +223,7 @@ app.post("/printful-webhook", async (req, res) => {
 
 
 
+
 // ====================
 // Register Printful Webhook Automatically
 // ====================
@@ -228,7 +231,8 @@ async function registerPrintfulWebhook() {
   try {
     const resp = await axios.post(
       "https://api.printful.com/webhooks",
-      { url: WEBHOOK_URL, types: ["order_created"] },
+      { url: WEBHOOK_URL, types: ['order_created', 'order_updated', 'order_fulfilled']
+ },
       { headers: { Authorization: `Bearer ${PRINTFUL_API_KEY}`, "Content-Type": "application/json" } }
     );
     console.log("✅ Printful webhook registered:", resp.data);
