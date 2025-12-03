@@ -174,19 +174,17 @@ async function createInvoiceFromPrintful(order) {
   const token = await getAccessToken();
   const lineItems = [];
 
-  if (!order.items || !order.items.length) {
-    console.log("⚠️ No items to create invoice for:", order);
-    return null;
-  }
+  if (!order.items?.length) return null;
 
+  // Items
   order.items.forEach(item => {
-    const amount = parseFloat(item.retail_price ?? item.price ?? "0") || 0;
-    const quantity = parseFloat(item.quantity ?? 1) || 1;
+    const amount = Number(item.retail_price ?? item.price ?? 0);
+    const quantity = Number(item.quantity ?? 1);
 
     lineItems.push({
       DetailType: "SalesItemLineDetail",
       Amount: amount * quantity,
-      Description: item.name ?? "Unnamed item",
+      Description: item.name ?? "Item",
       SalesItemLineDetail: {
         ItemRef: { value: SALES_ITEM_ID },
         Qty: quantity,
@@ -196,7 +194,7 @@ async function createInvoiceFromPrintful(order) {
   });
 
   // Shipping
-  const shippingAmount = parseFloat(order.shipping_price ?? order.shipping ?? 0) || 0;
+  const shippingAmount = Number(order.costs?.shipping ?? 0);
   if (shippingAmount > 0) {
     lineItems.push({
       DetailType: "SalesItemLineDetail",
@@ -211,7 +209,7 @@ async function createInvoiceFromPrintful(order) {
   }
 
   // Tax
-  const taxAmount = parseFloat(order.tax ?? 0) || 0;
+  const taxAmount = Number(order.retail_costs?.tax ?? 0);
   if (taxAmount > 0) {
     lineItems.push({
       DetailType: "SalesItemLineDetail",
@@ -240,6 +238,7 @@ async function createInvoiceFromPrintful(order) {
 
   return response.data;
 }
+
 
 // ====================
 // Printful Webhook
