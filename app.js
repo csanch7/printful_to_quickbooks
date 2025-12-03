@@ -10,6 +10,19 @@ import fs from "fs";
 const app = express();
 app.use(bodyParser.json());
 
+import { MongoClient } from "mongodb";
+
+const mongoClient = new MongoClient(process.env.MONGO_URI);
+let tokensCollection;
+
+async function initMongo() {
+  await mongoClient.connect();
+  const db = mongoClient.db("quickbooks"); // db name
+  tokensCollection = db.collection("tokens");
+  console.log("📦 MongoDB connected");
+}
+
+
 // ====================
 // CONFIG
 // ====================
@@ -39,19 +52,27 @@ const QUICKBOOKS_BASE_URL = "https://sandbox-quickbooks.api.intuit.com/v3/compan
 // ====================
 // Helper: Save & Load tokens
 // ====================
-function saveTokens(data) {
-  const timestampedData = {
-    ...data,
-    last_refreshed: Date.now() // track when this token was obtained
-  };
-  fs.writeFileSync(TOKEN_FILE, JSON.stringify(timestampedData, null, 2));
+async function saveTokens(data) {
+  const timestamp = Date.now();
+  await tokensCollection.updateOne(
+    { _id: "qbo-tokens" },
+    {
+      $set: {
+        access_token: data.access_token,
+        refresh_token: data.refresh_token,
+        last_refreshed: timestamp
+      }
+    },
+    { upsert: true }
+  );
 }
 
 
-function loadTokens() {
-  if (!fs.existsSync(TOKEN_FILE)) return null;
-  return JSON.parse(fs.readFileSync(TOKEN_FILE));
+
+async function loadTokens() {
+  return await tokensCollection.findOne({ _id: "qbo-tokens" });
 }
+
 
 app.get("/token-status", (req, res) => {
   const tokens = loadTokens();
@@ -103,7 +124,7 @@ app.get("/callback", async (req, res) => {
         auth: { username: CLIENT_ID, password: CLIENT_SECRET }
       }
     );
-    saveTokens(tokenResp.data);
+    await saveTokens(tokenResp.data);
     res.send("Tokens stored! Refresh token saved to tokens.json");
   } catch (err) {
     console.error(err.response?.data || err.message);
@@ -115,8 +136,10 @@ app.get("/callback", async (req, res) => {
 // Automatic Access Token Refresh
 // ====================
 async function getAccessToken() {
-  const tokens = loadTokens();
-  if (!tokens) throw new Error("No tokens stored — visit /auth first");
+  const tokens = await loadTokens();
+  if (!tokens || !tokens.refresh_token) {
+    throw new Error("No tokens stored — visit /auth first");
+  }
 
   try {
     const resp = await axios.post(
@@ -131,19 +154,18 @@ async function getAccessToken() {
       }
     );
 
-    // Save new access + refresh tokens automatically
-    saveTokens(resp.data);
+    await saveTokens(resp.data);
     return resp.data.access_token;
+
   } catch (err) {
     if (err.response?.data?.error === "invalid_grant") {
-      console.error(
-        "⚠️ Refresh token invalid. Manual reauthorization required — visit /auth in your browser."
-      );
+      console.error("⚠️ Refresh token invalid — reauthorize with /auth");
       throw new Error("Manual reauthorization required");
     }
     throw err;
   }
 }
+
 
 // ====================
 // Create QuickBooks Invoice
@@ -272,5 +294,6 @@ async function registerPrintfulWebhook() {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, async () => {
   console.log(`🚀 Server running at http://localhost:${PORT}`);
+  await initMongo();
   await registerPrintfulWebhook();
 });
