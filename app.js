@@ -174,17 +174,19 @@ async function createInvoiceFromPrintful(order) {
   const token = await getAccessToken();
   const lineItems = [];
 
-  if (!order.items?.length) return null;
+  if (!order.items || !order.items.length) {
+    console.log("⚠️ No items to create invoice for:", order);
+    return null;
+  }
 
-  // Items
   order.items.forEach(item => {
-    const amount = Number(item.retail_price ?? item.price ?? 0);
-    const quantity = Number(item.quantity ?? 1);
+    const amount = parseFloat(item.retail_price ?? item.price ?? 0) || 0;
+    const quantity = parseFloat(item.quantity ?? 1) || 1;
 
     lineItems.push({
       DetailType: "SalesItemLineDetail",
       Amount: amount * quantity,
-      Description: item.name ?? "Item",
+      Description: item.name ?? "Unnamed item",
       SalesItemLineDetail: {
         ItemRef: { value: SALES_ITEM_ID },
         Qty: quantity,
@@ -194,7 +196,9 @@ async function createInvoiceFromPrintful(order) {
   });
 
   // Shipping
-  const shippingAmount = Number(order.costs?.shipping ?? 0);
+  const shippingAmount =
+    parseFloat(order.shipping_price ?? order.shipping ?? 0) || 0;
+
   if (shippingAmount > 0) {
     lineItems.push({
       DetailType: "SalesItemLineDetail",
@@ -209,7 +213,8 @@ async function createInvoiceFromPrintful(order) {
   }
 
   // Tax
-  const taxAmount = Number(order.retail_costs?.tax ?? 0);
+  const taxAmount = parseFloat(order.tax ?? 0) || 0;
+
   if (taxAmount > 0) {
     lineItems.push({
       DetailType: "SalesItemLineDetail",
@@ -229,6 +234,7 @@ async function createInvoiceFromPrintful(order) {
   };
 
   const url = `${QUICKBOOKS_BASE_URL}/${REALM_ID}/invoice?minorversion=65`;
+
   const response = await axios.post(url, payload, {
     headers: {
       Authorization: `Bearer ${token}`,
@@ -245,7 +251,11 @@ async function createInvoiceFromPrintful(order) {
 // ====================
 app.post("/printful-webhook", async (req, res) => {
   try {
-    const order = req.body.data?.order || req.body.order || req.body.data;
+    const order =
+      req.body.data?.order ||
+      req.body.order ||
+      req.body.data;
+
     const items = order.items || order.line_items || [];
 
     console.log("**************************************************");
@@ -254,18 +264,25 @@ app.post("/printful-webhook", async (req, res) => {
     console.log("**************************************************");
 
     if (!items.length) {
-      console.log("⚠️ No items found in order:", JSON.stringify(req.body, null, 2));
+      console.log("⚠️ No items found:", JSON.stringify(req.body, null, 2));
       return res.status(200).send("No items to process");
     }
 
-    const invoice = await createInvoiceFromPrintful({ ...order, items });
+    const invoice = await createInvoiceFromPrintful({
+      ...order,
+      items
+    });
+
     console.log("Invoice created:", invoice);
-    res.status(200).send("OK");
+    return res.status(200).send("OK");
+
   } catch (err) {
-    console.error("QBO Error:", err.message);
-    res.status(500).send("Failed to create invoice");
+    console.error("QBO Error:", err.response?.data || err.message);
+    return res.status(500).send("Failed to create invoice");
   }
 });
+
+
 
 // ====================
 // Register Printful Webhook Automatically
