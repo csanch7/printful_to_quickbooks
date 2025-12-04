@@ -174,31 +174,35 @@ async function createInvoiceFromPrintful(order) {
   const token = await getAccessToken();
   const lineItems = [];
 
-  if (!order.items || !order.items.length) {
+  if (!order.items?.length) {
     console.log("⚠️ No items to create invoice for:", order);
     return null;
   }
 
+  // -------------------
+  // Add each product
+  // -------------------
   order.items.forEach(item => {
-    const amount = parseFloat(item.retail_price ?? item.price ?? 0) || 0;
-    const quantity = parseFloat(item.quantity ?? 1) || 1;
+    const unitPrice = Number(item.retail_price ?? item.price ?? 0);
+    const quantity = Number(item.quantity ?? 1);
+    const amount = unitPrice * quantity;
 
     lineItems.push({
       DetailType: "SalesItemLineDetail",
-      Amount: amount * quantity,
-      Description: item.name ?? "Unnamed item",
+      Amount: amount,
+      Description: item.name ?? "Item",
       SalesItemLineDetail: {
         ItemRef: { value: SALES_ITEM_ID },
         Qty: quantity,
-        UnitPrice: amount
+        UnitPrice: unitPrice
       }
     });
   });
 
+  // -------------------
   // Shipping
-  const shippingAmount =
-    parseFloat(order.shipping_price ?? order.shipping ?? 0) || 0;
-
+  // -------------------
+  const shippingAmount = Number(order.retail_costs?.shipping ?? 0);
   if (shippingAmount > 0) {
     lineItems.push({
       DetailType: "SalesItemLineDetail",
@@ -212,9 +216,10 @@ async function createInvoiceFromPrintful(order) {
     });
   }
 
+  // -------------------
   // Tax
-  const taxAmount = parseFloat(order.tax ?? 0) || 0;
-
+  // -------------------
+  const taxAmount = Number(order.retail_costs?.tax ?? 0);
   if (taxAmount > 0) {
     lineItems.push({
       DetailType: "SalesItemLineDetail",
@@ -228,13 +233,27 @@ async function createInvoiceFromPrintful(order) {
     });
   }
 
+  // -------------------
+  // Discount
+  // -------------------
+  const discountAmount = Number(order.retail_costs?.discount ?? 0);
+  if (discountAmount > 0) {
+    lineItems.push({
+      DetailType: "DiscountLineDetail",
+      Amount: -discountAmount, // QB expects negative for discount
+      DiscountLineDetail: { PercentBased: false }
+    });
+  }
+
+  // -------------------
+  // Build payload
+  // -------------------
   const payload = {
     CustomerRef: { value: CUSTOMER_ID },
     Line: lineItems
   };
 
   const url = `${QUICKBOOKS_BASE_URL}/${REALM_ID}/invoice?minorversion=65`;
-
   const response = await axios.post(url, payload, {
     headers: {
       Authorization: `Bearer ${token}`,
@@ -244,6 +263,7 @@ async function createInvoiceFromPrintful(order) {
 
   return response.data;
 }
+
 
 
 // ====================
