@@ -163,6 +163,17 @@ app.get("/disconnect", (req, res) => {
   res.send("The QuickBooks connection has been disconnected.");
 });
 
+app.get("/my-ip", (req, res) => {
+  res.send({ ip: req.headers['x-forwarded-for'] || req.socket.remoteAddress });
+});
+
+import axios from "axios";
+
+app.get("/check-ip", async (req, res) => {
+  const resp = await axios.get("https://api.ipify.org?format=json");
+  res.send(resp.data);
+});
+
 
 app.get("/token-status", (req, res) => {
   const tokens = loadTokens();
