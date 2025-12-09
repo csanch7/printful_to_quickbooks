@@ -79,7 +79,7 @@ app.get("/", (req, res) => {
 app.get("/privacy", (req, res) => {
   res.send(`
     <h1>Privacy Policy</h1>
-<p><strong>Last Updated:</strong> {{TODAY}}</p>
+<p><strong>Last Updated:</strong> 12/9/25</p>
 
 <p>This Privacy Policy explains how Viking Ventures (“we”, “our”, “us”) collects, uses, and protects information processed by our Printful-to-QuickBooks integration service (“Service”).</p>
 
@@ -123,7 +123,7 @@ app.get("/privacy", (req, res) => {
 app.get("/eula", (req, res) => {
   res.send(`
     <h1>End-User License Agreement (EULA)</h1>
-<p><strong>Last Updated:</strong> {{TODAY}}</p>
+<p><strong>Last Updated:</strong> 12/9/25</p>
 
 <p>This End-User License Agreement (“Agreement”) is between you (“User”) and Viking Ventures (“Company”, “we”, “us”) and governs your use of the Printful-to-QuickBooks integration service (“Service”).</p>
 
@@ -157,6 +157,10 @@ app.get("/eula", (req, res) => {
 <p>For questions regarding this Agreement, contact us at:<br>
 <strong>INFO@VIKINGVENTURESGROUP.ORG</strong></p>
   `);
+});
+
+app.get("/disconnect", (req, res) => {
+  res.send("The QuickBooks connection has been disconnected.");
 });
 
 
