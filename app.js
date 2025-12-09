@@ -5,7 +5,6 @@
 import express from "express";
 import axios from "axios";
 import bodyParser from "body-parser";
-import fs from "fs";
 
 const app = express();
 app.use(bodyParser.json());
@@ -73,6 +72,9 @@ async function loadTokens() {
   return await tokensCollection.findOne({ _id: "qbo-tokens" });
 }
 
+app.get("/", (req, res) => {
+  res.send("Printful → QuickBooks integration is running.");
+});
 
 app.get("/token-status", (req, res) => {
   const tokens = loadTokens();
