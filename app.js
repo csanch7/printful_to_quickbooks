@@ -167,7 +167,6 @@ app.get("/my-ip", (req, res) => {
   res.send({ ip: req.headers['x-forwarded-for'] || req.socket.remoteAddress });
 });
 
-import axios from "axios";
 
 app.get("/check-ip", async (req, res) => {
   const resp = await axios.get("https://api.ipify.org?format=json");
