@@ -30,7 +30,7 @@ async function initMongo() {
 const CLIENT_ID = "ABR0xVc84QaHENG9gm3rx2SN4RuGwComv9Cqcwj6R36vSHR02k";
 const CLIENT_SECRET = "nn9p4ewoDTVFnsniaDDvIkDRqQryMUxNe08sCvhM";
 const REDIRECT_URI = "https://printful-to-quickbooks.onrender.com/callback";
-const REALM_ID = "9341455722544321";
+const REALM_ID = "9341455470636484";
 
 // Single customer in QBO
 const CUSTOMER_ID = "58";
