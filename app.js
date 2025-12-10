@@ -25,8 +25,10 @@ async function initMongo() {
 // ====================
 // CONFIG
 // ====================
-const CLIENT_ID = "ABtdythQiSKdJPzvZpvig56Y44qCcdmXP4EMi3x4g82BrM8AZx";
-const CLIENT_SECRET = "jL0vn8ZDwh8F3BQjjCGMUzRkKf1Czg9CPnmS8TWz";
+
+
+const CLIENT_ID = "ABR0xVc84QaHENG9gm3rx2SN4RuGwComv9Cqcwj6R36vSHR02k";
+const CLIENT_SECRET = "nn9p4ewoDTVFnsniaDDvIkDRqQryMUxNe08sCvhM";
 const REDIRECT_URI = "https://printful-to-quickbooks.onrender.com/callback";
 const REALM_ID = "9341455722544321";
 
@@ -46,7 +48,8 @@ const WEBHOOK_URL = "https://printful-to-quickbooks.onrender.com/printful-webhoo
 const TOKEN_FILE = "./tokens.json";
 
 // Base URL for QuickBooks Sandbox
-const QUICKBOOKS_BASE_URL = "https://sandbox-quickbooks.api.intuit.com/v3/company";
+const QUICKBOOKS_BASE_URL = "https://quickbooks.api.intuit.com/v3/company";
+
 
 // ====================
 // Helper: Save & Load tokens
