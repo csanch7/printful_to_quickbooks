@@ -33,12 +33,12 @@ const REDIRECT_URI = "https://printful-to-quickbooks.onrender.com/callback";
 const REALM_ID = "9341455470636484";
 
 // Single customer in QBO
-const CUSTOMER_ID = "58";
+const CUSTOMER_ID = "7";
 
 // QuickBooks item IDs
-const SALES_ITEM_ID = "25";
-const SHIPPING_ITEM_ID = "24";
-const TAX_ITEM_ID = "26";
+const SALES_ITEM_ID = "5";
+const SHIPPING_ITEM_ID = "7";
+const TAX_ITEM_ID = "6";
 
 // Printful API key & webhook URL
 const PRINTFUL_API_KEY = "vIL3OCEAX5gDuThUMxjrpvZ25mc0dyl4Q92K8MCo";
