@@ -1,9 +1,18 @@
 import axios from "axios";
+import "dotenv/config";
 import fs from "fs";
 
-const REALM_ID = "9341455722544321";
-const CLIENT_ID = "ABtdythQiSKdJPzvZpvig56Y44qCcdmXP4EMi3x4g82BrM8AZx";
-const CLIENT_SECRET = "jL0vn8ZDwh8F3BQjjCGMUzRkKf1Czg9CPnmS8TWz";
+function requireEnv(name) {
+  const value = process.env[name];
+  if (!value) {
+    throw new Error(`Missing required environment variable: ${name}`);
+  }
+  return value;
+}
+
+const REALM_ID = requireEnv("QBO_REALM_ID");
+const CLIENT_ID = requireEnv("QBO_CLIENT_ID");
+const CLIENT_SECRET = requireEnv("QBO_CLIENT_SECRET");
 
 const tokenFile = "./tokens.json";
 

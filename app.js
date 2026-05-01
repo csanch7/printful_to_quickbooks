@@ -2,16 +2,23 @@
  * QuickBooks + Printful Integration (Sandbox)
  * ONE FILE — app.js
  ***************************************************/
+import "dotenv/config";
 import express from "express";
 import axios from "axios";
 import bodyParser from "body-parser";
+import { MongoClient } from "mongodb";
 
 const app = express();
 app.use(bodyParser.json());
 
-import { MongoClient } from "mongodb";
+const mongoUri = process.env.MONGO_URI;
+if (!mongoUri || !mongoUri.startsWith("mongodb://") && !mongoUri.startsWith("mongodb+srv://")) {
+  console.error("Missing or invalid MONGO_URI. Add it to your .env file, for example:");
+  console.error("MONGO_URI=mongodb+srv://USER:PASSWORD@HOST/DATABASE?retryWrites=true&w=majority");
+  process.exit(1);
+}
 
-const mongoClient = new MongoClient(process.env.MONGO_URI);
+const mongoClient = new MongoClient(mongoUri);
 let tokensCollection;
 
 async function initMongo() {
@@ -26,23 +33,32 @@ async function initMongo() {
 // CONFIG
 // ====================
 
+function requireEnv(name) {
+  const value = process.env[name];
+  if (!value) {
+    console.error(`Missing required environment variable: ${name}`);
+    process.exit(1);
+  }
+  return value;
+}
 
-const CLIENT_ID = "ABR0xVc84QaHENG9gm3rx2SN4RuGwComv9Cqcwj6R36vSHR02k";
-const CLIENT_SECRET = "nn9p4ewoDTVFnsniaDDvIkDRqQryMUxNe08sCvhM";
-const REDIRECT_URI = "https://printful-to-quickbooks.onrender.com/callback";
-const REALM_ID = "9341455470636484";
+const CLIENT_ID = requireEnv("QBO_CLIENT_ID");
+const CLIENT_SECRET = requireEnv("QBO_CLIENT_SECRET");
+const REDIRECT_URI = requireEnv("QBO_REDIRECT_URI");
+const REALM_ID = requireEnv("QBO_REALM_ID");
 
-// Single customer in QBO
-const CUSTOMER_ID = "7";
+// Vendor in QBO used when creating bills
+const VENDOR_ID = process.env.QB_VENDOR_ID || "7";
 
-// QuickBooks item IDs
-const SALES_ITEM_ID = "5";
-const SHIPPING_ITEM_ID = "7";
-const TAX_ITEM_ID = "6";
+// QuickBooks expense account IDs used on bill lines
+const PRODUCT_EXPENSE_ACCOUNT_ID = process.env.QB_PRODUCT_EXPENSE_ACCOUNT_ID || process.env.QB_EXPENSE_ACCOUNT_ID || "18";
+const SHIPPING_EXPENSE_ACCOUNT_ID = process.env.QB_SHIPPING_EXPENSE_ACCOUNT_ID || process.env.QB_EXPENSE_ACCOUNT_ID || "18";
+const TAX_EXPENSE_ACCOUNT_ID = process.env.QB_TAX_EXPENSE_ACCOUNT_ID || process.env.QB_EXPENSE_ACCOUNT_ID || "18";
+const FEE_EXPENSE_ACCOUNT_ID = process.env.QB_FEE_EXPENSE_ACCOUNT_ID || process.env.QB_EXPENSE_ACCOUNT_ID || "18";
 
 // Printful API key & webhook URL
-const PRINTFUL_API_KEY = "vIL3OCEAX5gDuThUMxjrpvZ25mc0dyl4Q92K8MCo";
-const WEBHOOK_URL = "https://printful-to-quickbooks.onrender.com/printful-webhook";
+const PRINTFUL_API_KEY = requireEnv("PRINTFUL_API_KEY");
+const WEBHOOK_URL = requireEnv("PRINTFUL_WEBHOOK_URL");
 
 // Token storage
 const TOKEN_FILE = "./tokens.json";
@@ -98,7 +114,7 @@ app.get("/privacy", (req, res) => {
 <h2>2. How We Use Information</h2>
 <p>The information we process is used solely to:</p>
 <ul>
-  <li>Create or update invoices in QuickBooks Online</li>
+  <li>Create or update bills in QuickBooks Online</li>
   <li>Transmit Printful order data to your accounting system</li>
 </ul>
 
@@ -177,8 +193,8 @@ app.get("/check-ip", async (req, res) => {
 });
 
 
-app.get("/token-status", (req, res) => {
-  const tokens = loadTokens();
+app.get("/token-status", async (req, res) => {
+  const tokens = await loadTokens();
   if (!tokens) return res.status(200).send("No tokens stored. Visit /auth to authorize your app.");
 
   const now = Date.now();
@@ -271,92 +287,94 @@ async function getAccessToken() {
 
 
 // ====================
-// Create QuickBooks Invoice
+// Create QuickBooks Bill
 // ====================
-async function createInvoiceFromPrintful(order) {
+async function createBillFromPrintful(order) {
   const token = await getAccessToken();
   const lineItems = [];
+  const printfulOrderId = String(order.id ?? order.external_id ?? "");
 
   if (!order.items?.length) {
-    console.log("⚠️ No items to create invoice for:", order);
+    console.log("⚠️ No items to create bill for:", order);
     return null;
   }
 
+  if (!printfulOrderId) {
+    throw new Error("Printful order is missing an id");
+  }
+
+  const addExpenseLine = (amount, description, accountId) => {
+    const roundedAmount = Number(amount.toFixed(2));
+    if (roundedAmount === 0) return;
+
+    lineItems.push({
+      DetailType: "AccountBasedExpenseLineDetail",
+      Amount: roundedAmount,
+      Description: description,
+      AccountBasedExpenseLineDetail: {
+        AccountRef: { value: accountId }
+      }
+    });
+  };
+
   // -------------------
-  // Add each product
+  // Add each product at Printful cost
   // -------------------
   order.items.forEach(item => {
-    const unitPrice = Number(item.retail_price ?? item.price ?? 0);
+    const unitPrice = Number(item.price ?? 0);
     const quantity = Number(item.quantity ?? 1);
     const amount = unitPrice * quantity;
 
-    lineItems.push({
-      DetailType: "SalesItemLineDetail",
-      Amount: amount,
-      Description: item.name ?? "Item",
-      SalesItemLineDetail: {
-        ItemRef: { value: SALES_ITEM_ID },
-        Qty: quantity,
-        UnitPrice: unitPrice
-      }
-    });
+    addExpenseLine(amount, item.name ?? "Item", PRODUCT_EXPENSE_ACCOUNT_ID);
   });
 
   // -------------------
   // Shipping
   // -------------------
-  const shippingAmount = Number(order.retail_costs?.shipping ?? 0);
-  if (shippingAmount > 0) {
-    lineItems.push({
-      DetailType: "SalesItemLineDetail",
-      Amount: shippingAmount,
-      Description: "Shipping",
-      SalesItemLineDetail: {
-        ItemRef: { value: SHIPPING_ITEM_ID },
-        Qty: 1,
-        UnitPrice: shippingAmount
-      }
-    });
-  }
+  const shippingAmount = Number(order.costs?.shipping ?? 0);
+  addExpenseLine(shippingAmount, "Shipping", SHIPPING_EXPENSE_ACCOUNT_ID);
 
   // -------------------
   // Tax
   // -------------------
-  const taxAmount = Number(order.retail_costs?.tax ?? 0);
-  if (taxAmount > 0) {
-    lineItems.push({
-      DetailType: "SalesItemLineDetail",
-      Amount: taxAmount,
-      Description: "Sales Tax",
-      SalesItemLineDetail: {
-        ItemRef: { value: TAX_ITEM_ID },
-        Qty: 1,
-        UnitPrice: taxAmount
-      }
-    });
-  }
+  const taxAmount = Number(order.costs?.tax ?? 0);
+  addExpenseLine(taxAmount, "Tax", TAX_EXPENSE_ACCOUNT_ID);
+
+  const vatAmount = Number(order.costs?.vat ?? 0);
+  addExpenseLine(vatAmount, "VAT", TAX_EXPENSE_ACCOUNT_ID);
+
+  // -------------------
+  // Fees
+  // -------------------
+  const digitizationAmount = Number(order.costs?.digitization ?? 0);
+  addExpenseLine(digitizationAmount, "Digitization", FEE_EXPENSE_ACCOUNT_ID);
+
+  const additionalFeeAmount = Number(order.costs?.additional_fee ?? 0);
+  addExpenseLine(additionalFeeAmount, "Additional Fee", FEE_EXPENSE_ACCOUNT_ID);
+
+  const fulfillmentFeeAmount = Number(order.costs?.fulfillment_fee ?? 0);
+  addExpenseLine(fulfillmentFeeAmount, "Fulfillment Fee", FEE_EXPENSE_ACCOUNT_ID);
+
+  const retailDeliveryFeeAmount = Number(order.costs?.retail_delivery_fee ?? 0);
+  addExpenseLine(retailDeliveryFeeAmount, "Retail Delivery Fee", FEE_EXPENSE_ACCOUNT_ID);
 
   // -------------------
   // Discount
   // -------------------
-  const discountAmount = Number(order.retail_costs?.discount ?? 0);
-  if (discountAmount > 0) {
-    lineItems.push({
-      DetailType: "DiscountLineDetail",
-      Amount: -discountAmount, // QB expects negative for discount
-      DiscountLineDetail: { PercentBased: false }
-    });
-  }
+  const discountAmount = Number(order.costs?.discount ?? 0);
+  addExpenseLine(-discountAmount, "Discount", PRODUCT_EXPENSE_ACCOUNT_ID);
 
   // -------------------
   // Build payload
   // -------------------
   const payload = {
-    CustomerRef: { value: CUSTOMER_ID },
-    Line: lineItems
+    VendorRef: { value: VENDOR_ID },
+    Line: lineItems,
+    DocNumber: `PF-${printfulOrderId}`,
+    PrivateNote: `Printful order ${printfulOrderId}${order.external_id ? ` / ${order.external_id}` : ""}`
   };
 
-  const url = `${QUICKBOOKS_BASE_URL}/${REALM_ID}/invoice?minorversion=65`;
+  const url = `${QUICKBOOKS_BASE_URL}/${REALM_ID}/bill?minorversion=65`;
   const response = await axios.post(url, payload, {
     headers: {
       Authorization: `Bearer ${token}`,
@@ -374,10 +392,18 @@ async function createInvoiceFromPrintful(order) {
 // ====================
 app.post("/printful-webhook", async (req, res) => {
   try {
+    if (req.body.type && req.body.type !== "order_created") {
+      return res.status(200).send("Event ignored");
+    }
+
     const order =
       req.body.data?.order ||
       req.body.order ||
       req.body.data;
+
+    if (!order) {
+      return res.status(400).send("Missing order");
+    }
 
     const items = order.items || order.line_items || [];
 
@@ -391,17 +417,17 @@ app.post("/printful-webhook", async (req, res) => {
       return res.status(200).send("No items to process");
     }
 
-    const invoice = await createInvoiceFromPrintful({
+    const bill = await createBillFromPrintful({
       ...order,
       items
     });
 
-    console.log("Invoice created:", invoice);
+    console.log(bill?.skipped ? "Bill skipped:" : "Bill created:", bill);
     return res.status(200).send("OK");
 
   } catch (err) {
-    console.error("QBO Error:", err.response?.data || err.message);
-    return res.status(500).send("Failed to create invoice");
+    console.error("QBO Error:", JSON.stringify(err.response?.data || err.message, null, 2));
+    return res.status(500).send("Failed to create bill");
   }
 });
 
@@ -431,8 +457,15 @@ async function registerPrintfulWebhook() {
 // Start server
 // ====================
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, async () => {
-  console.log(`🚀 Server running at http://localhost:${PORT}`);
+async function start() {
   await initMongo();
-  await registerPrintfulWebhook();
+  app.listen(PORT, async () => {
+    console.log(`🚀 Server running at http://localhost:${PORT}`);
+    await registerPrintfulWebhook();
+  });
+}
+
+start().catch((err) => {
+  console.error("Failed to start server:", err.message);
+  process.exit(1);
 });
