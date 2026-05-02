@@ -240,7 +240,7 @@ app.get("/callback", async (req, res) => {
       }
     );
     await saveTokens(tokenResp.data);
-    res.send("Tokens stored! Refresh token saved to tokens.json");
+    res.send("Tokens stored in MongoDB");
   } catch (err) {
     console.error(err.response?.data || err.message);
     res.status(500).send("OAuth error");
@@ -421,7 +421,7 @@ app.post("/printful-webhook", async (req, res) => {
     });
 
     console.log(bill?.skipped ? "Bill skipped:" : 
-      `Bill {bill.Bill.Id} created: [{bill.Bill.PrivateNote}: {bill.Bill.TotalAmt}]`
+      `Bill ${bill.Bill.Id} created: [${bill.Bill.PrivateNote}: ${bill.Bill.TotalAmt}]`
     );
     return res.status(200).send("OK");
 
