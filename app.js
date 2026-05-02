@@ -403,10 +403,12 @@ app.post("/printful-webhook", async (req, res) => {
 
     const items = order.items || order.line_items || [];
 
-    console.log("**************************************************");
-    console.log("*******************ORDER ITEMS********************");
-    console.log(items);
-    console.log("**************************************************");
+
+    console.log("Incoming Order: ")
+    items.forEach((item)=>{
+      console.log(item.name);
+    })
+
 
     if (!items.length) {
       console.log("⚠️ No items found:", JSON.stringify(req.body, null, 2));
