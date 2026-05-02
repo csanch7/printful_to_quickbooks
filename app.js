@@ -1,6 +1,5 @@
 /***************************************************
- * QuickBooks + Printful Integration (Sandbox)
- * ONE FILE — app.js
+ * QuickBooks + Printful Integration * 
  ***************************************************/
 import "dotenv/config";
 import express from "express";
@@ -60,11 +59,8 @@ const FEE_EXPENSE_ACCOUNT_ID = process.env.QB_FEE_EXPENSE_ACCOUNT_ID || process.
 const PRINTFUL_API_KEY = requireEnv("PRINTFUL_API_KEY");
 const WEBHOOK_URL = requireEnv("PRINTFUL_WEBHOOK_URL");
 
-// Token storage
-const TOKEN_FILE = "./tokens.json";
 
-// Base URL for QuickBooks Sandbox
-const QUICKBOOKS_BASE_URL = "https://quickbooks.api.intuit.com/v3/company";
+const QUICKBOOKS_BASE_URL = process.env.QBO_BASE_URL || "https://quickbooks.api.intuit.com/v3/company";
 
 
 // ====================
@@ -422,7 +418,9 @@ app.post("/printful-webhook", async (req, res) => {
       items
     });
 
-    console.log(bill?.skipped ? "Bill skipped:" : "Bill created:", bill);
+    console.log(bill?.skipped ? "Bill skipped:" : 
+      `Bill {bill.Bill.Id} created: [{bill.Bill.PrivateNote}: {bill.Bill.TotalAmt}]`
+    );
     return res.status(200).send("OK");
 
   } catch (err) {

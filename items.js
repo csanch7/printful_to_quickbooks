@@ -13,6 +13,7 @@ function requireEnv(name) {
 const REALM_ID = requireEnv("QBO_REALM_ID");
 const CLIENT_ID = requireEnv("QBO_CLIENT_ID");
 const CLIENT_SECRET = requireEnv("QBO_CLIENT_SECRET");
+const QUICKBOOKS_BASE_URL = process.env.QBO_BASE_URL || "https://quickbooks.api.intuit.com/v3/company";
 
 const tokenFile = "./tokens.json";
 
@@ -48,7 +49,7 @@ async function refreshAccessToken(refreshToken) {
 
 // Query Items
 async function listItems(accessToken) {
-   const url = `https://sandbox-quickbooks.api.intuit.com/v3/company/${REALM_ID}/query?query=select * from Item`;
+  const url = `${QUICKBOOKS_BASE_URL}/${REALM_ID}/query?query=select * from Item`;
   const resp = await axios.get(url, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
