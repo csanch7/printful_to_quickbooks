@@ -406,7 +406,7 @@ app.post("/printful-webhook", async (req, res) => {
 
     console.log("Incoming Order: ")
     items.forEach((item)=>{
-      console.log(item.name);
+      console.log(`${item.name} x ${item.quantity}`, );
     })
 
 
