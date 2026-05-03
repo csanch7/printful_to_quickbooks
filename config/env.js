@@ -31,6 +31,7 @@ export const config = {
   printful: {
     apiKey: requireEnv("PRINTFUL_API_KEY"),
     webhookUrl: requireEnv("PRINTFUL_WEBHOOK_URL"),
+    storeId: requireEnv("PRINTFUL_STORE_ID"),
 
   }
 };

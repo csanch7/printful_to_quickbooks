@@ -7,26 +7,27 @@ router.post("/printful-webhook", async (req, res) => {
   try {
 
     
-    if (req.body.type && req.body.type !== "order_created") {
-      return res.status(200).send("Event ignored");
+    if (!req.body.type || req.body.type !== "order_created") {
+      return res.status(200).send("Bad Event");
     }
 
-    const order = req.body.data?.order || req.body.order || req.body.data;
+    const order = req.body.data.order;
     if (!order) {
       return res.status(400).send("Missing order");
     }
 
-    const items = order.items || order.line_items || [];
+    const items = order.items;
+
+    if (!items.length) {
+      console.log("No items found:", JSON.stringify(req.body, null, 2));
+      return res.status(200).send("No items to process");
+    }
 
     console.log("Incoming Order: ");
     items.forEach((item) => {
       console.log(`${item.name} x ${item.quantity}`);
     });
 
-    if (!items.length) {
-      console.log("No items found:", JSON.stringify(req.body, null, 2));
-      return res.status(200).send("No items to process");
-    }
 
     const bill = await createBillFromPrintful({
       ...order,

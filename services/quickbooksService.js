@@ -78,11 +78,6 @@ export async function createBillFromPrintful(order) {
   const lineItems = [];
   const printfulOrderId = String(order.id ?? order.external_id ?? "");
 
-  if (!order.items?.length) {
-    console.log("No items to create bill for:", order);
-    return null;
-  }
-
   if (!printfulOrderId) {
     throw new Error("Printful order is missing an id");
   }
