@@ -1,4 +1,4 @@
-POST https://printful-to-quickbooks.onrender.com/printful-webhook HTTP/1.1
+POST https://printful-to-quickbooks.onrender.com/printful-webhook/16611087 HTTP/1.1
 Content-Type: application/json
 
 {

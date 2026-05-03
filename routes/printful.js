@@ -1,11 +1,14 @@
 import express from "express";
+import { config } from "../config/env.js";
 import { createBillFromPrintful } from "../services/quickbooksService.js";
 
 const router = express.Router();
 
-router.post("/printful-webhook", async (req, res) => {
+router.post("/printful-webhook/:storeId", async (req, res) => {
   try {
-
+    if (req.params.storeId && req.params.storeId !== config.printful.storeId) {
+      return res.status(404).send("Unknown store");
+    }
     
     if (!req.body.type || req.body.type !== "order_created") {
       return res.status(200).send("Bad Event");
