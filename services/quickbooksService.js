@@ -82,6 +82,21 @@ export async function createBillFromPrintful(order) {
     throw new Error("Printful order is missing an id");
   }
 
+  const queryUrl = `${baseUrl}/${realmId}/query?query=SELECT%20*%20FROM%20Bill%20WHERE%20DocNumber%20%3D%20'PF-${printfulOrderId}'`;
+  const checkDupResp = await axios.get(queryUrl, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/json",
+    },
+  });
+
+  const existingBills = checkDupResp.data.QueryResponse?.Bill || [];
+
+  if (existingBills.length > 0) {
+    console.log("Duplicate order detected");
+    return { skipped: true, existingBill: existingBills[0] };
+  }
+
   const addExpenseLine = (amount, description, accountId) => {
     const roundedAmount = Number(amount.toFixed(2));
     if (roundedAmount === 0) return;
@@ -120,8 +135,8 @@ export async function createBillFromPrintful(order) {
     PrivateNote: `Printful order ${printfulOrderId}${order.external_id ? ` / ${order.external_id}` : ""}`
   };
 
-  const url = `${baseUrl}/${realmId}/bill?minorversion=65`;
-  const response = await axios.post(url, payload, {
+  const billUrl = `${baseUrl}/${realmId}/bill?minorversion=65`;
+  const response = await axios.post(billUrl, payload, {
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json"

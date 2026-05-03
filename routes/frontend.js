@@ -114,12 +114,12 @@ router.get("/token-status", async (req, res) => {
     warning = "⚠️ Refresh token is expiring soon. Please reauthorize your app!";
   }
 
+  const tokensExist = (tokens.access_token && tokens.refresh_token) ? true : false
+
   res.status(200).send({
-    access_token: tokens.access_token,
-    refresh_token: tokens.refresh_token,
+    tokens_exist: tokensExist,
     last_refreshed: new Date(lastRefreshed).toISOString(),
     days_since_refresh: daysSinceRefresh,
-    days_left_estimate: daysLeft,
     warning
   });
 });

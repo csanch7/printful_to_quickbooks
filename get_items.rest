@@ -1,3 +1,0 @@
-GET https://quickbooks.api.intuit.com/v3/company/9341455470636484/query?query=select * from Item
-Authorization: Bearer YOUR_ACCESS_TOKEN
-Content-Type: application/json
