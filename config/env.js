@@ -18,13 +18,13 @@ export const config = {
     clientSecret: requireEnv("QBO_CLIENT_SECRET"),
     redirectUri: requireEnv("QBO_REDIRECT_URI"),
     realmId: requireEnv("QBO_REALM_ID"),
-    baseUrl: process.env.QBO_BASE_URL || "https://quickbooks.api.intuit.com/v3/company",
+    baseUrl: process.env.QBO_BASE_URL,
     vendorId: process.env.QB_VENDOR_ID,
     accounts: {
-      productExpense: process.env.QB_PRODUCT_EXPENSE_ACCOUNT_ID || process.env.QB_EXPENSE_ACCOUNT_ID || "18",
-      shippingExpense: process.env.QB_SHIPPING_EXPENSE_ACCOUNT_ID || process.env.QB_EXPENSE_ACCOUNT_ID || "18",
-      taxExpense: process.env.QB_TAX_EXPENSE_ACCOUNT_ID || process.env.QB_EXPENSE_ACCOUNT_ID || "18",
-      feeExpense: process.env.QB_FEE_EXPENSE_ACCOUNT_ID || process.env.QB_EXPENSE_ACCOUNT_ID || "18"
+      productExpense: process.env.QB_EXPENSE_ACCOUNT_ID,
+      shippingExpense:  process.env.QB_EXPENSE_ACCOUNT_ID,
+      taxExpense: process.env.QB_EXPENSE_ACCOUNT_ID,
+      feeExpense: process.env.QB_EXPENSE_ACCOUNT_ID
     }
   },
 

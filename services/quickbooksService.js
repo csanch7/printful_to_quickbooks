@@ -65,7 +65,7 @@ export async function getAccessToken() {
     return resp.data.access_token;
   } catch (err) {
     if (err.response?.data?.error === "invalid_grant") {
-      console.error("⚠️ Refresh token invalid — reauthorize with /auth");
+      console.error("Refresh token invalid — reauthorize with /auth");
       throw new Error("Manual reauthorization required");
     }
 
@@ -79,7 +79,7 @@ export async function createBillFromPrintful(order) {
   const printfulOrderId = String(order.id ?? order.external_id ?? "");
 
   if (!order.items?.length) {
-    console.log("⚠️ No items to create bill for:", order);
+    console.log("No items to create bill for:", order);
     return null;
   }
 

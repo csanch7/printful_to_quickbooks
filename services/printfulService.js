@@ -14,12 +14,12 @@ export async function registerPrintfulWebhook() {
       }
     );
 
-    console.log("✅ Printful webhook registered:", resp.data);
+    console.log("Printful webhook registered:", resp.data);
   } catch (err) {
     if (err.response?.status === 409) {
-      console.log("ℹ️ Webhook already exists");
+      console.log("Webhook already exists");
     } else {
-      console.error("❌ Failed to register webhook:", err.response?.data || err.message);
+      console.error("Failed to register webhook:", err.response?.data || err.message);
     }
   }
 }
