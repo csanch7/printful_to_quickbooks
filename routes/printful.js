@@ -5,7 +5,7 @@ const router = express.Router();
 
 router.post("/printful-webhook", async (req, res) => {
   try {
-    console.log(req, res);
+
     
     if (req.body.type && req.body.type !== "order_created") {
       return res.status(200).send("Event ignored");
