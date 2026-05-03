@@ -4,8 +4,6 @@ import { loadTokens } from "../repositories/tokensRepository.js";
 
 const router = express.Router();
 
-
-
 router.get("/", (req, res) => {
   res.send("Printful → QuickBooks integration is running.");
 });
@@ -93,18 +91,10 @@ router.get("/eula", (req, res) => {
   `);
 });
 
+
+//wip
 router.get("/disconnect", (req, res) => {
   res.send("The QuickBooks connection has been disconnected.");
-});
-
-router.get("/my-ip", (req, res) => {
-  res.send({ ip: req.headers['x-forwarded-for'] || req.socket.remoteAddress });
-});
-
-
-router.get("/check-ip", async (req, res) => {
-  const resp = await axios.get("https://api.ipify.org?format=json");
-  res.send(resp.data);
 });
 
 

@@ -15,7 +15,7 @@ export async function initMongo() {
   await mongoClient.connect();
   const db = mongoClient.db("quickbooks");
   tokensCollection = db.collection("tokens");
-  console.log("📦 MongoDB connected");
+  console.log(" MongoDB connected");
 }
 
 export function getTokensCollection() {

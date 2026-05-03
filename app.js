@@ -18,7 +18,7 @@ async function start() {
   await initMongo();
 
   app.listen(config.port, async () => {
-    console.log(`🚀 Server running at http://localhost:${config.port}`);
+    console.log(` Server running at http://localhost:${config.port}`);
     await registerPrintfulWebhook();
   });
 }
